@@ -1,4 +1,5 @@
 """Pydantic schemas for admin operations."""
+
 from pydantic import BaseModel
 
 

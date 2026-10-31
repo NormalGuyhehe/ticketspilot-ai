@@ -1,10 +1,11 @@
 """Custom exceptions for TicketPilot AI."""
+
 from fastapi import HTTPException, status
 
 
 class TicketPilotException(HTTPException):
     """Base exception for TicketPilot."""
-    pass
+
 
 
 class TicketNotFoundError(TicketPilotException):
@@ -36,4 +37,12 @@ class LLMServiceError(TicketPilotException):
         super().__init__(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=detail,
+        )
+
+
+class ReprocessNotAllowedError(TicketPilotException):
+    def __init__(self, ticket_id: int):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Ticket {ticket_id} has a valid AI classification; reprocess is not allowed",
         )

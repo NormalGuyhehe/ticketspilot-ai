@@ -1,13 +1,16 @@
 """SQLAlchemy ORM models."""
+
 import enum
 from datetime import datetime
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -18,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 
-class TicketStatus(str, enum.Enum):
+class TicketStatus(enum.StrEnum):
     RECEIVED = "RECEIVED"
     PROCESSING = "PROCESSING"
     AUTO_ROUTED = "AUTO_ROUTED"
@@ -29,7 +32,7 @@ class TicketStatus(str, enum.Enum):
     ESCALATED = "ESCALATED"
 
 
-class ReviewDecision(str, enum.Enum):
+class ReviewDecision(enum.StrEnum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
@@ -37,8 +40,19 @@ class ReviewDecision(str, enum.Enum):
 class Ticket(Base):
     __tablename__ = "tickets"
 
+    __table_args__ = (
+        Index("ix_tickets_status_created_at", "status", "created_at"),
+        Index("ix_tickets_resolved_at", "resolved_at"),
+        CheckConstraint(
+            "ai_confidence IS NULL OR (ai_confidence >= 0 AND ai_confidence <= 100)",
+            name="ck_tickets_ai_confidence_range",
+        ),
+    )
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    external_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    external_id: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
     customer_email: Mapped[str] = mapped_column(String(255), nullable=False)
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
@@ -67,9 +81,14 @@ class Ticket(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     history: Mapped[list["TicketHistory"]] = relationship(
@@ -80,9 +99,15 @@ class Ticket(Base):
 class TicketHistory(Base):
     __tablename__ = "ticket_history"
 
+    __table_args__ = (
+        Index("ix_ticket_history_ticket_id_timestamp", "ticket_id", "timestamp"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     ticket_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer,
+        ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     old_value: Mapped[str | None] = mapped_column(Text, nullable=True)

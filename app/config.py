@@ -1,4 +1,7 @@
 """Application configuration using Pydantic Settings."""
+
+from typing import Any
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,6 +10,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # App
@@ -24,6 +28,8 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: int = 10
     LLM_MAX_RETRIES: int = 2
 
+    LLM_ENABLE_JSON_MODE: bool = True
+    LLM_MAX_TOKENS: int = 300
     # Business Logic
     AI_CONFIDENCE_THRESHOLD: int = 80
 
@@ -35,4 +41,11 @@ class Settings(BaseSettings):
     WEBHOOK_API_KEY: str = "dev-webhook-key-change-in-production"
 
 
-settings = Settings()
+def build_settings(**overrides: Any) -> Settings:
+    """
+    Factory for settings.
+
+    No module-level singleton.
+    Settings are injected into TicketsPilotApplication explicitly.
+    """
+    return Settings(**overrides)
